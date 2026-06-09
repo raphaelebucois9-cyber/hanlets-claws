@@ -146,6 +146,15 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
 
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordResetMessage, setPasswordResetMessage] = useState('');
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+
+  const isPasswordReset =
+    window.location.search.includes('passwordReset=true') ||
+    window.location.hash.includes('type=recovery');
+
   useEffect(() => {
     loadAll();
     db.getCurrentUser().then(setUser);
@@ -160,6 +169,79 @@ export default function App() {
       setOrders([]);
     }
   }, [user]);
+
+  async function handlePasswordUpdate() {
+    setPasswordResetMessage('');
+
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordResetMessage('Le mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordResetMessage('Les deux mots de passe ne correspondent pas.');
+      return;
+    }
+
+    setPasswordResetLoading(true);
+    const error = await db.updatePassword(newPassword);
+    setPasswordResetLoading(false);
+
+    if (error) {
+      setPasswordResetMessage('Erreur : ' + error.message);
+      return;
+    }
+
+    setPasswordResetMessage('✅ Mot de passe mis à jour. Vous pouvez maintenant vous connecter.');
+    setTimeout(() => {
+      window.history.replaceState({}, document.title, window.location.origin);
+      setPage('admin');
+    }, 1500);
+  }
+
+  if (isPasswordReset) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex items-center justify-center px-5">
+        <div className="w-full max-w-md bg-neutral-900 rounded-2xl border border-neutral-800 p-8">
+          <Lock className="w-8 h-8 text-neutral-300 mb-4" />
+          <h1 className="font-serif text-2xl text-neutral-50 mb-2" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>
+            Nouveau mot de passe
+          </h1>
+          <p className="text-neutral-500 text-sm mb-6">
+            Choisissez un nouveau mot de passe pour votre espace admin.
+          </p>
+
+          <input
+            type="password"
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+            placeholder="Nouveau mot de passe"
+            className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 mb-3 text-neutral-100"
+          />
+
+          <input
+            type="password"
+            value={confirmNewPassword}
+            onChange={e => setConfirmNewPassword(e.target.value)}
+            placeholder="Confirmer le mot de passe"
+            className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 mb-3 text-neutral-100"
+          />
+
+          {passwordResetMessage && (
+            <p className="text-sm text-neutral-300 mb-3">{passwordResetMessage}</p>
+          )}
+
+          <button
+            onClick={handlePasswordUpdate}
+            disabled={passwordResetLoading}
+            className="w-full px-6 py-3 bg-neutral-50 text-neutral-950 rounded-full hover:bg-white text-sm font-medium disabled:opacity-50"
+          >
+            {passwordResetLoading ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   async function loadAll() {
     try {
