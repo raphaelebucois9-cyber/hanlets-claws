@@ -151,15 +151,44 @@ export default function App() {
   const [passwordResetMessage, setPasswordResetMessage] = useState('');
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const recoveryCode = urlParams.get('code');
+
   const isPasswordReset =
     window.location.search.includes('passwordReset=true') ||
-    window.location.hash.includes('type=recovery');
+    window.location.hash.includes('type=recovery') ||
+    !!recoveryCode;
 
   useEffect(() => {
     loadAll();
     db.getCurrentUser().then(setUser);
     const unsub = db.onAuthChange(setUser);
     return unsub;
+  }, []);
+
+  useEffect(() => {
+    async function handleRecoveryCode() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+
+      if (!code) return;
+
+      setPasswordResetLoading(true);
+      setPasswordResetMessage('Préparation de la session de réinitialisation...');
+
+      const error = await db.exchangeCodeForSession(code);
+
+      setPasswordResetLoading(false);
+
+      if (error) {
+        setPasswordResetMessage('Erreur : impossible de valider le lien de réinitialisation. Demandez un nouveau lien.');
+        return;
+      }
+
+      setPasswordResetMessage('Lien validé. Vous pouvez choisir un nouveau mot de passe.');
+    }
+
+    handleRecoveryCode();
   }, []);
 
   useEffect(() => {
