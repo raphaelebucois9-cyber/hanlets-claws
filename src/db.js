@@ -67,7 +67,14 @@ export function onAuthChange(cb) {
   return () => subscription.unsubscribe()
 }
 
-export async function getCurrentUser() {
-  const { data } = await supabase.auth.getUser()
-  return data?.user || null
+export async function resetPasswordForEmail(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/?passwordReset=true`
+  })
+  return error
+}
+
+export async function updatePassword(newPassword) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  return error
 }

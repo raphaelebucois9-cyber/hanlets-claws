@@ -3,9 +3,11 @@ import { Sparkles, Upload, X, Plus, Lock, Mail, Camera, Trash2, ArrowLeft, Heart
 import * as db from './db';
 
 // ===== CONFIG (à personnaliser) =====
-const BRAND = "Hanlet's Claws";
-const INSTAGRAM = '@hanletsclaws';
-const EMAIL_CONTACT = 'contact@hanletsclaws.com';
+const BRAND = "Annettebakeur";
+const INSTAGRAM = '@Annettebakeur';
+const EMAIL_CONTACT = 'axellehanlet@free.fr';
+// ===== PASSWORD RESET STATE (à rajouter dans le composant App) =====
+// (tu verras c'est utilisé dans le return)
 
 const SHAPES = [
   { id: 1, label: 'Court arrondi', len: 22, type: 'round' },
@@ -625,6 +627,10 @@ function AdminPage({ user, setUser, orders, setOrders, hero, setHero, gallery, s
   const [tab, setTab] = useState('orders');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
+
 
   async function login() {
     setAuthLoading(true);
@@ -632,6 +638,23 @@ function AdminPage({ user, setUser, orders, setOrders, hero, setHero, gallery, s
     setAuthLoading(false);
     if (error) alert('Identifiants incorrects');
     else setUser(user);
+  }
+
+  async function requestPasswordReset() {
+    if (!resetEmail.trim()) return alert('Renseignez votre email');
+    setAuthLoading(true);
+    const error = await db.resetPasswordForEmail(resetEmail.trim());
+    setAuthLoading(false);
+    if (error) {
+      alert('Erreur : ' + error.message);
+    } else {
+      setResetMessage('✅ Un email de réinitialisation a été envoyé. Vérifiez votre boîte mail.');
+      setResetEmail('');
+      setTimeout(() => {
+        setForgotPasswordMode(false);
+        setResetMessage('');
+      }, 3000);
+    }
   }
 
   if (!user) {
@@ -642,9 +665,22 @@ function AdminPage({ user, setUser, orders, setOrders, hero, setHero, gallery, s
           <Lock className="w-8 h-8 text-neutral-300 mb-4" />
           <h1 className="font-serif text-2xl text-neutral-50 mb-2" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>Espace admin</h1>
           <p className="text-neutral-500 text-sm mb-6">Connexion réservée à la gestionnaire du site.</p>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 mb-3 text-neutral-100" />
-          <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} onKeyDown={e => e.key === 'Enter' && login()} placeholder="Mot de passe" className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 mb-3 text-neutral-100" />
-          <button onClick={login} disabled={authLoading} className="w-full px-6 py-3 bg-neutral-50 text-neutral-950 rounded-full hover:bg-white text-sm font-medium disabled:opacity-50">{authLoading ? 'Connexion...' : 'Connexion'}</button>
+          {!forgotPasswordMode ? (
+            <>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && login()} placeholder="Email" className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 mb-3 text-neutral-100" />
+              <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} onKeyDown={e => e.key === 'Enter' && login()} placeholder="Mot de passe" className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 mb-3 text-neutral-100" />
+              <button onClick={login} disabled={authLoading} className="w-full px-6 py-3 bg-neutral-50 text-neutral-950 rounded-full hover:bg-white text-sm font-medium disabled:opacity-50 mb-2">{authLoading ? 'Connexion...' : 'Connexion'}</button>
+              <button onClick={() => setForgotPasswordMode(true)} className="w-full px-6 py-2 text-fuchsia-400 text-sm hover:text-fuchsia-300 text-center">J'ai oublié mon mot de passe</button>
+            </>
+          ) : (
+            <>
+              <p className="text-neutral-400 text-sm mb-4">Renseignez votre email, vous recevrez un lien de réinitialisation.</p>
+              <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && requestPasswordReset()} placeholder="Votre email" className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 mb-3 text-neutral-100" />
+              {resetMessage && <p className="text-sm text-green-400 mb-3">{resetMessage}</p>}
+              <button onClick={requestPasswordReset} disabled={authLoading} className="w-full px-6 py-3 bg-neutral-50 text-neutral-950 rounded-full hover:bg-white text-sm font-medium disabled:opacity-50 mb-2">{authLoading ? 'Envoi en cours...' : 'Envoyer le lien'}</button>
+              <button onClick={() => setForgotPasswordMode(false)} className="w-full px-6 py-2 text-neutral-400 text-sm hover:text-neutral-100 text-center">← Retour à la connexion</button>
+            </>
+          )}
         </div>
       </div>
     );
