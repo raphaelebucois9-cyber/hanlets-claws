@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Upload, X, Plus, Lock, Mail, Camera, Trash2, ArrowLeft, Heart, Check, ImagePlus, Send, Package, LogOut, Edit3, Menu, ChevronRight, ChevronDown, Search, Download, Home } from 'lucide-react';
+import { Sparkles, Upload, X, Plus, Lock, Mail, Camera, Trash2, ArrowLeft, Heart, Check, ImagePlus, Send, Package, LogOut, Edit3, Menu, ChevronRight, ChevronDown, Search, Download, Home, Settings, Eye, EyeOff } from 'lucide-react';
 import * as db from './db';
 
 // ===== CONFIG (à personnaliser) =====
@@ -150,19 +150,28 @@ export default function App() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordResetMessage, setPasswordResetMessage] = useState('');
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   const urlParams = new URLSearchParams(window.location.search);
   const recoveryCode = urlParams.get('code');
-
-  const isPasswordReset =
-    window.location.search.includes('passwordReset=true') ||
+  const hasRecoveryUrl =
     window.location.hash.includes('type=recovery') ||
-    !!recoveryCode;
+    Boolean(recoveryCode);
+  const isPasswordReset = passwordRecovery || hasRecoveryUrl;
 
   useEffect(() => {
     loadAll();
     db.getCurrentUser().then(setUser);
-    const unsub = db.onAuthChange(setUser);
+
+    const unsub = db.onAuthChange((event, currentUser) => {
+      setUser(currentUser);
+
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecovery(true);
+        setPasswordResetMessage('Lien validé. Choisissez maintenant votre nouveau mot de passe.');
+      }
+    });
+
     return unsub;
   }, []);
 
@@ -221,11 +230,17 @@ export default function App() {
       return;
     }
 
-    setPasswordResetMessage('✅ Mot de passe mis à jour. Vous pouvez maintenant vous connecter.');
-    setTimeout(() => {
+    setPasswordResetMessage('✅ Mot de passe mis à jour. Vous allez devoir vous reconnecter avec ce nouveau mot de passe.');
+
+    setTimeout(async () => {
+      await db.signOut();
+      setUser(null);
+      setPasswordRecovery(false);
+      setNewPassword('');
+      setConfirmNewPassword('');
       window.history.replaceState({}, document.title, window.location.origin);
       setPage('admin');
-    }, 1500);
+    }, 1800);
   }
 
   if (isPasswordReset) {
@@ -810,7 +825,7 @@ function AdminPage({ user, setUser, orders, setOrders, hero, setHero, gallery, s
         <button onClick={logout} className="text-neutral-500 hover:text-neutral-200 flex items-center gap-1.5 text-sm"><LogOut className="w-4 h-4" /> Déconnexion</button>
       </div>
       <div className="flex gap-2 mb-8 border-b border-neutral-800 overflow-x-auto">
-        {[{ id: 'orders', label: `Commandes (${orders.length})`, icon: Package },{ id: 'hero', label: 'Photo accueil', icon: Camera },{ id: 'gallery', label: 'Galerie', icon: ImagePlus },{ id: 'designs', label: 'Designs', icon: Sparkles }].map(t => (
+        {[{ id: 'orders', label: `Commandes (${orders.length})`, icon: Package },{ id: 'hero', label: 'Photo accueil', icon: Camera },{ id: 'gallery', label: 'Galerie', icon: ImagePlus },{ id: 'designs', label: 'Designs', icon: Sparkles },{ id: 'settings', label: 'Paramètres', icon: Settings }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-3 text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${tab === t.id ? 'border-neutral-50 text-neutral-50' : 'border-transparent text-neutral-500 hover:text-neutral-200'}`}><t.icon className="w-4 h-4" /> {t.label}</button>
         ))}
       </div>
@@ -830,6 +845,115 @@ function AdminPage({ user, setUser, orders, setOrders, hero, setHero, gallery, s
       {tab === 'hero' && <HeroManager hero={hero} setHero={setHero} />}
       {tab === 'gallery' && <GalleryManager gallery={gallery} setGallery={setGallery} />}
       {tab === 'designs' && <DesignsManager designs={designs} setDesigns={setDesigns} />}
+      {tab === 'settings' && <SettingsPanel user={user} />}
+    </div>
+  );
+}
+
+function SettingsPanel({ user }) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  async function changePassword() {
+    setMessage('');
+
+    if (newPassword.length < 8) {
+      setMessage('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setMessage('Les deux mots de passe ne correspondent pas.');
+      return;
+    }
+
+    setLoading(true);
+    const error = await db.updatePassword(newPassword);
+    setLoading(false);
+
+    if (error) {
+      setMessage('Erreur : ' + error.message);
+      return;
+    }
+
+    setNewPassword('');
+    setConfirmPassword('');
+    setMessage('✅ Votre mot de passe a bien été modifié.');
+  }
+
+  return (
+    <div className="max-w-2xl space-y-5">
+      <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 lg:p-8">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center">
+            <Settings className="w-5 h-5 text-neutral-200" />
+          </div>
+          <div>
+            <h3 className="font-serif text-xl text-neutral-50" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>Paramètres du compte</h3>
+            <p className="text-neutral-500 text-sm">Gérez les informations de connexion à l'espace admin.</p>
+          </div>
+        </div>
+
+        <div className="mb-7">
+          <label className="text-xs tracking-widest uppercase text-neutral-500 block mb-2">Adresse email</label>
+          <div className="px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg text-neutral-200">
+            {user?.email || 'Email indisponible'}
+          </div>
+        </div>
+
+        <div className="border-t border-neutral-800 pt-6">
+          <h4 className="text-neutral-100 font-medium mb-1">Modifier le mot de passe</h4>
+          <p className="text-neutral-500 text-sm mb-4">
+            Pour des raisons de sécurité, l'ancien mot de passe ne peut jamais être affiché. Vous pouvez uniquement en définir un nouveau.
+          </p>
+
+          <div className="relative mb-3">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="Nouveau mot de passe"
+              autoComplete="new-password"
+              className="w-full px-4 py-3 pr-12 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 text-neutral-100"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-neutral-500 hover:text-neutral-200"
+              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && changePassword()}
+            placeholder="Confirmer le nouveau mot de passe"
+            autoComplete="new-password"
+            className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 text-neutral-100 mb-3"
+          />
+
+          {message && (
+            <p className={`text-sm mb-3 ${message.startsWith('✅') ? 'text-green-400' : 'text-amber-300'}`}>
+              {message}
+            </p>
+          )}
+
+          <button
+            onClick={changePassword}
+            disabled={loading}
+            className="px-6 py-3 bg-neutral-50 text-neutral-950 rounded-full hover:bg-white text-sm font-medium disabled:opacity-50"
+          >
+            {loading ? 'Modification...' : 'Enregistrer le nouveau mot de passe'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
