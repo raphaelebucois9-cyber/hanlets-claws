@@ -1,0 +1,76 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1600 900"
+  fill="none"
+>
+  <defs>
+    <linearGradient id="waveGradient" x1="0" y1="0" x2="1600" y2="900">
+      <stop offset="0%" stop-color="#6525D9" stop-opacity="0.10" />
+      <stop offset="35%" stop-color="#A338EA" stop-opacity="0.75" />
+      <stop offset="60%" stop-color="#D26CFF" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#41CFFF" stop-opacity="0.12" />
+    </linearGradient>
+
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g
+    fill="none"
+    stroke="url(#waveGradient)"
+    stroke-linecap="round"
+  >
+    <path
+      d="M-180 610 C 130 350 340 770 640 505 S 1110 110 1780 470"
+      stroke-width="3"
+      filter="url(#glow)"
+    />
+
+    <path
+      d="M-160 640 C 160 390 355 750 660 525 S 1130 160 1760 500"
+      stroke-width="1.8"
+      opacity="0.82"
+    />
+
+    <path
+      d="M-140 670 C 200 430 380 740 690 550 S 1160 210 1740 530"
+      stroke-width="1.4"
+      opacity="0.68"
+    />
+
+    <path
+      d="M-120 700 C 235 470 405 735 720 575 S 1190 265 1720 560"
+      stroke-width="1.1"
+      opacity="0.54"
+    />
+
+    <path
+      d="M-100 730 C 270 510 430 740 750 605 S 1220 320 1700 590"
+      stroke-width="0.9"
+      opacity="0.42"
+    />
+
+    <path
+      d="M-190 455 C 180 720 410 255 720 470 S 1120 750 1770 315"
+      stroke-width="2"
+      opacity="0.58"
+    />
+
+    <path
+      d="M-160 425 C 200 690 430 280 745 490 S 1140 710 1740 340"
+      stroke-width="1.2"
+      opacity="0.44"
+    />
+
+    <path
+      d="M-130 395 C 230 660 450 310 770 510 S 1160 670 1710 365"
+      stroke-width="0.9"
+      opacity="0.32"
+    />
+  </g>
+</svg>
