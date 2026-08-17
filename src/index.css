@@ -437,3 +437,28 @@ select {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* À coller tout en bas de src/index.css */
+
+@font-face {
+  font-family: "Bernard MT Condensed Local";
+  src: local("Bernard MT Condensed");
+  font-display: swap;
+}
+
+:root {
+  --font-site:
+    "Bernard MT Condensed Local",
+    "Bernard MT Condensed",
+    "Roboto Condensed",
+    "Arial Narrow",
+    sans-serif;
+}
+
+html,
+body,
+#root,
+.site-shell,
+.site-shell * {
+  font-family: var(--font-site) !important;
+}

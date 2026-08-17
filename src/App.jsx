@@ -9,26 +9,16 @@ const EMAIL_CONTACT = 'axellehanlet@free.fr';
 // ===== PASSWORD RESET STATE (à rajouter dans le composant App) =====
 // (tu verras c'est utilisé dans le return)
 
-const SHAPES = [
-  { id: 1, label: 'Court arrondi', len: 22, type: 'round' },
-  { id: 2, label: 'Court carré', len: 22, type: 'square' },
-  { id: 3, label: 'Moyen amande', len: 42, type: 'almond' },
-  { id: 4, label: 'Moyen ballerine', len: 42, type: 'coffin' },
-  { id: 5, label: 'Long stiletto', len: 68, type: 'stiletto' },
-  { id: 6, label: 'Long ballerine', len: 68, type: 'coffin' }
-];
+const SHAPES = Array.from({ length: 10 }, (_, index) => ({
+  id: index + 1,
+  label: `Modèle ${index + 1}`
+}));
 
-const FINGERS = [
-  { id: 'g1', name: 'Pouce', hand: 'Main gauche' },
-  { id: 'g2', name: 'Index', hand: 'Main gauche' },
-  { id: 'g3', name: 'Majeur', hand: 'Main gauche' },
-  { id: 'g4', name: 'Annulaire', hand: 'Main gauche' },
-  { id: 'g5', name: 'Auriculaire', hand: 'Main gauche' },
-  { id: 'd1', name: 'Pouce', hand: 'Main droite' },
-  { id: 'd2', name: 'Index', hand: 'Main droite' },
-  { id: 'd3', name: 'Majeur', hand: 'Main droite' },
-  { id: 'd4', name: 'Annulaire', hand: 'Main droite' },
-  { id: 'd5', name: 'Auriculaire', hand: 'Main droite' }
+const MEASUREMENT_PHOTOS = [
+  { id: 'leftThumb', name: 'Pouce main gauche' },
+  { id: 'leftHand', name: 'Main gauche entière' },
+  { id: 'rightThumb', name: 'Pouce main droite' },
+  { id: 'rightHand', name: 'Main droite entière' }
 ];
 
 const DEFAULT_DESIGNS = [
@@ -424,7 +414,7 @@ function HomePage({ hero, gallery, goTo }) {
           <h2 className="font-serif text-3xl lg:text-4xl text-neutral-50" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>Comment ça marche</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-6 lg:gap-10">
-          {[{ n: '01', t: 'Choisissez', d: "Sélectionnez un design existant ou décrivez-moi votre commande sur mesure." },{ n: '02', t: 'Mesurez', d: "Envoyez les photos de vos 10 doigts à côté d'une pièce pour des mesures précises." },{ n: '03', t: 'Recevez', d: "Je crée votre set en 7 à 14 jours, puis envoi soigné chez vous." }].map(s => (
+          {[{ n: '01', t: 'Choisissez', d: "Sélectionnez un design existant ou décrivez-moi votre commande sur mesure." },{ n: '02', t: 'Mesurez', d: "Envoyez 4 photos : chaque pouce et chaque main entière, avec une pièce de monnaie en euro comme référence." },{ n: '03', t: 'Recevez', d: "Je crée votre set en 7 à 14 jours, puis envoi soigné chez vous." }].map(s => (
             <div key={s.n} className="text-center md:text-left">
               <p className="font-serif text-5xl text-neutral-700 mb-3" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>{s.n}</p>
               <h3 className="font-serif text-xl text-neutral-50 mb-2" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>{s.t}</h3>
@@ -621,7 +611,7 @@ function CustomOrderForm({ saveOrder, goTo }) {
         <Section num="4" title="Relief"><ChoiceRow options={['Oui', 'Non']} value={relief} onChange={setRelief} /></Section>
         <Section num="5" title="Descriptif personnel">
           <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={4} placeholder="Décrivez-moi le niveau de détails que vous souhaitez pour vos ongles + requêtes complémentaires" className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-500 transition-colors text-neutral-100 placeholder-neutral-600 resize-none mb-2" />
-          <p className="text-neutral-500 text-sm italic">Exemple : est-ce que les ongles doivent respecter une certaine homogénéité ou voulez-vous chaque ongle très différent ?</p>
+          <p className="text-neutral-500 text-sm italic">Exemple : j'aimerais des ongles tous différents, avec des spirales, mais pas d'étoiles. </p>
         </Section>
         <Section num="6" title="Longueur & forme"><ShapeSelector value={shape} onChange={setShape} /></Section>
         <Section num="7" title="Inspirations">
@@ -697,52 +687,204 @@ function ChoiceRow({ options, value, onChange }) {
 function ShapeSelector({ value, onChange }) {
   return (
     <div>
-      <p className="text-neutral-500 text-sm mb-4">Choisissez entre les 6 formes/longueurs disponibles.</p>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        {SHAPES.map(s => (
-          <button key={s.id} onClick={() => onChange(s.id)} className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center ${value === s.id ? 'border-neutral-50 bg-neutral-800/50' : 'border-neutral-800 hover:border-neutral-600 bg-neutral-950'}`}>
-            <div className="h-24 w-10 flex items-end justify-center mb-2"><NailShapeSvg type={s.type} len={s.len} selected={value === s.id} /></div>
-            <span className="text-xs font-medium text-neutral-100">{s.id}</span>
-            <span className="text-[10px] text-neutral-500 text-center leading-tight mt-0.5">{s.label}</span>
-          </button>
+      <p className="text-neutral-400 text-sm mb-5 leading-relaxed">
+        Consultez les deux guides ci-dessous, puis sélectionnez le numéro
+        correspondant à la longueur et à la forme souhaitées.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-7">
+        <figure className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950">
+          <img
+            src="/shape-guide-1-6.png"
+            alt="Guide des longueurs et formes 1 à 6"
+            className="w-full h-auto object-contain"
+          />
+
+          <figcaption className="px-4 py-3 text-center text-sm text-neutral-400 border-t border-neutral-800">
+            Modèles 1 à 6
+          </figcaption>
+        </figure>
+
+        <figure className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950">
+          <img
+            src="/shape-guide-7-10.png"
+            alt="Guide des longueurs et formes 7 à 10"
+            className="w-full h-auto object-contain"
+          />
+
+          <figcaption className="px-4 py-3 text-center text-sm text-neutral-400 border-t border-neutral-800">
+            Modèles 7 à 10
+          </figcaption>
+        </figure>
+      </div>
+
+      <p className="text-xs tracking-widest uppercase text-neutral-500 mb-3">
+        Sélectionnez un modèle
+      </p>
+
+      <div className="grid grid-cols-5 gap-2 sm:gap-3">
+        {SHAPES.map((shape) => {
+          const selected = value === shape.id;
+
+          return (
+            <label
+              key={shape.id}
+              className={`relative aspect-square rounded-xl border-2 cursor-pointer
+                flex items-center justify-center transition-all
+                ${
+                  selected
+                    ? 'border-neutral-50 bg-neutral-800/70 shadow-lg'
+                    : 'border-neutral-800 bg-neutral-950 hover:border-neutral-500'
+                }`}
+            >
+              <input
+                type="radio"
+                name="shape-choice"
+                value={shape.id}
+                checked={selected}
+                onChange={() => onChange(shape.id)}
+                className="sr-only"
+              />
+
+              <span className="text-xl sm:text-2xl font-semibold text-neutral-100">
+                {shape.id}
+              </span>
+
+              {selected && (
+                <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-neutral-50 flex items-center justify-center">
+                  <Check
+                    className="w-3 h-3 text-neutral-950"
+                    strokeWidth={3}
+                  />
+                </span>
+              )}
+            </label>
+          );
+        })}
+      </div>
+
+      {value && (
+        <p className="mt-4 text-sm text-neutral-300">
+          Modèle sélectionné : <strong>n° {value}</strong>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function MeasurementsBlock({ measurements, setMeasurements }) {
+  async function handlePhotoUpload(photoId, file) {
+    if (!file) return;
+
+    const compressed = await compressImage(file, 1000, 0.65);
+
+    setMeasurements((currentMeasurements) => ({
+      ...currentMeasurements,
+      [photoId]: compressed
+    }));
+  }
+
+  function removePhoto(photoId) {
+    setMeasurements((currentMeasurements) => {
+      const updatedMeasurements = { ...currentMeasurements };
+      delete updatedMeasurements[photoId];
+      return updatedMeasurements;
+    });
+  }
+
+  return (
+    <div>
+      <p className="text-neutral-300 text-sm mb-2 leading-relaxed">
+        Prenez en photo chacun de vos pouces ainsi que vos deux mains entières,
+        à côté d’une pièce de monnaie en euro.
+      </p>
+
+      <p className="text-neutral-500 text-sm mb-5 leading-relaxed">
+        La pièce doit être visible sur chaque photo afin de servir de référence
+        pour les dimensions.
+      </p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {MEASUREMENT_PHOTOS.map((photo) => (
+          <MeasurementUpload
+            key={photo.id}
+            photo={photo}
+            image={measurements[photo.id]}
+            onUpload={(file) => handlePhotoUpload(photo.id, file)}
+            onRemove={() => removePhoto(photo.id)}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function MeasurementsBlock({ measurements, setMeasurements }) {
-  async function handleFingerUpload(fid, file) {
-    if (!file) return;
-    const compressed = await compressImage(file, 800, 0.55);
-    setMeasurements({ ...measurements, [fid]: compressed });
-  }
-  function removeFinger(fid) { const m = { ...measurements }; delete m[fid]; setMeasurements(m); }
-  return (
-    <div>
-      <p className="text-neutral-400 text-sm mb-4 leading-relaxed">Prenez en photo chacun de vos 10 doigts, pas trop proche (20 cm minimum), à côté d'une pièce de 1 ou 2 euros.</p>
-      {['Main gauche', 'Main droite'].map(hand => (
-        <div key={hand} className="mb-5">
-          <p className="text-xs tracking-widest uppercase text-neutral-500 mb-3">{hand}</p>
-          <div className="grid grid-cols-5 gap-2 lg:gap-3">
-            {FINGERS.filter(f => f.hand === hand).map(f => <FingerUpload key={f.id} finger={f} image={measurements[f.id]} onUpload={(file) => handleFingerUpload(f.id, file)} onRemove={() => removeFinger(f.id)} />)}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+function MeasurementUpload({ photo, image, onUpload, onRemove }) {
+  const inputRef = useRef(null);
 
-function FingerUpload({ finger, image, onUpload, onRemove }) {
-  const ref = useRef(null);
   return (
     <div>
-      <button onClick={() => ref.current?.click()} className={`relative w-full aspect-square rounded-lg overflow-hidden transition-all ${image ? 'border border-neutral-700' : 'border-2 border-dashed border-neutral-700 hover:border-neutral-400 hover:bg-neutral-900'}`}>
-        {image ? <><img src={image} alt={finger.name} className="w-full h-full object-cover" /><span className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-colors" /></> : <div className="flex items-center justify-center h-full"><Camera className="w-5 h-5 text-neutral-500" /></div>}
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className={`relative w-full aspect-[4/5] rounded-xl overflow-hidden transition-all ${
+          image
+            ? 'border border-neutral-700'
+            : 'border-2 border-dashed border-neutral-700 hover:border-neutral-400 hover:bg-neutral-900'
+        }`}
+      >
+        {image ? (
+          <>
+            <img
+              src={image}
+              alt={photo.name}
+              className="w-full h-full object-cover"
+            />
+            <span className="absolute inset-0 bg-black/0 hover:bg-black/25 transition-colors" />
+            <span className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/75 flex items-center justify-center">
+              <Camera className="w-4 h-4 text-white" />
+            </span>
+          </>
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center gap-2 px-2">
+            <Camera className="w-6 h-6 text-neutral-500" />
+            <span className="text-[11px] text-neutral-500 text-center">
+              Ajouter une photo
+            </span>
+          </div>
+        )}
       </button>
-      <p className="text-[10px] lg:text-xs text-neutral-400 text-center mt-1.5 leading-tight">{finger.name}</p>
-      <input ref={ref} type="file" accept="image/*" capture="environment" onChange={(e) => onUpload(e.target.files?.[0])} className="hidden" />
-      {image && <button onClick={onRemove} className="block mx-auto text-[10px] text-neutral-500 hover:text-red-400 mt-0.5">retirer</button>}
+
+      <p className="text-xs text-neutral-300 text-center mt-2 leading-tight min-h-[32px]">
+        {photo.name}
+      </p>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+
+          if (file) {
+            onUpload(file);
+          }
+
+          event.target.value = '';
+        }}
+        className="hidden"
+      />
+
+      {image && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="block mx-auto text-xs text-neutral-500 hover:text-red-400 mt-1"
+        >
+          Retirer
+        </button>
+      )}
     </div>
   );
 }
@@ -1039,25 +1181,31 @@ function OrderDetail({ order, onBack, onUpdate, onDelete }) {
           )}
         </>)}
         {Object.keys(order.measurements || {}).length > 0 && (
-          <DetailRow label="Mesures">
-            <div className="space-y-4 mt-2">
-              {['Main gauche', 'Main droite'].map(hand => {
-                const handFingers = FINGERS.filter(f => f.hand === hand && order.measurements[f.id]);
-                if (handFingers.length === 0) return null;
-                return (
-                  <div key={hand}>
-                    <p className="text-xs tracking-widest uppercase text-neutral-500 mb-2">{hand}</p>
-                    <div className="grid grid-cols-5 gap-2">
-                      {handFingers.map(f => (
-                        <a key={f.id} href={order.measurements[f.id]} target="_blank" rel="noreferrer" className="block">
-                          <div className="aspect-square rounded-lg overflow-hidden bg-neutral-800 border border-neutral-800 hover:border-neutral-600"><img src={order.measurements[f.id]} alt={f.name} className="w-full h-full object-cover" /></div>
-                          <p className="text-[10px] text-neutral-400 text-center mt-1">{f.name}</p>
-                        </a>
-                      ))}
+          <DetailRow label="Photos des mesures">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
+              {MEASUREMENT_PHOTOS
+                .filter((photo) => order.measurements?.[photo.id])
+                .map((photo) => (
+                  <a
+                    key={photo.id}
+                    href={order.measurements[photo.id]}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block"
+                  >
+                    <div className="aspect-[4/5] rounded-lg overflow-hidden bg-neutral-800 border border-neutral-800 hover:border-neutral-500 transition-colors">
+                      <img
+                        src={order.measurements[photo.id]}
+                        alt={photo.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  </div>
-                );
-              })}
+
+                    <p className="text-xs text-neutral-400 text-center mt-1.5">
+                      {photo.name}
+                    </p>
+                  </a>
+                ))}
             </div>
           </DetailRow>
         )}
