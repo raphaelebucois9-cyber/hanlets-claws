@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Upload, X, Plus, Lock, Mail, Camera, Trash2, ArrowLeft, Heart, Check, ImagePlus, Send, Package, LogOut, Edit3, Menu, ChevronRight, ChevronDown, Search, Download, Home, Settings, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Upload, X, Plus, Lock, Mail, Camera, Trash2, ArrowLeft, Heart, Check, ImagePlus, Send, Package, LogOut, Edit3, Menu, ChevronRight, Search, Download, Home, Settings, Eye, EyeOff } from 'lucide-react';
 import * as db from './db';
 
 // ===== CONFIG (à personnaliser) =====
@@ -28,13 +28,6 @@ const DEFAULT_DESIGNS = [
   { id: 'd4', name: 'Ghost Lace', price: 50, image: null, desc: 'Dentelle gothique sur base nude' }
 ];
 
-const FAQ_ITEMS = [
-  { q: 'Combien de temps tiennent les press-on ?', a: "En moyenne 1 à 3 semaines selon votre application et l'entretien. La colle longue durée permet de tenir jusqu'à 3 semaines, tandis que les pastilles adhésives donnent 1 à 7 jours et permettent de réutiliser le set." },
-  { q: 'Comment poser correctement les ongles ?', a: "Limez vos ongles naturels, repoussez vos cuticules, nettoyez avec de l'alcool, posez la colle ou les pastilles, et pressez 10 à 15 secondes par ongle. Un kit complet est fourni à chaque commande." },
-  { q: 'Sont-ils vraiment réutilisables ?', a: "Oui ! Avec les pastilles adhésives, vous pouvez retirer délicatement vos ongles et les conserver dans leur boîte pour les remettre plusieurs fois." },
-  { q: 'Combien de temps pour recevoir ma commande ?', a: "Le délai de création est de 7 à 14 jours après réception de vos mesures, puis 3 à 5 jours d'expédition." },
-  { q: 'Et si la taille ne convient pas ?', a: "Si une taille ne convient pas, je refais l'ongle concerné gratuitement. Prenez bien vos mesures à côté d'une pièce pour limiter les erreurs." }
-];
 
 // ===== HELPERS =====
 async function compressImage(file, maxSize = 900, quality = 0.65) {
@@ -293,14 +286,32 @@ export default function App() {
 
   async function saveOrder(order) {
     const o = { ...order, id: uid(), createdAt: Date.now(), status: 'new' };
-    const ok = await db.createOrder(o);
-    if (ok) {
-      setConfirmation(o);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return true;
+
+    const result = await db.createOrder(o);
+
+    if (!result?.ok) {
+      console.error('Order creation failed:', result?.error);
+      alert("Erreur d'envoi. Veuillez réessayer.");
+      return false;
     }
-    alert("Erreur d'envoi. Veuillez réessayer.");
-    return false;
+
+    try {
+      const response = await fetch('/api/notify-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: o.id })
+      });
+
+      if (!response.ok) {
+        console.warn('Order email notification failed:', await response.text());
+      }
+    } catch (emailError) {
+      console.warn('Order email notification failed:', emailError);
+    }
+
+    setConfirmation(o);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return true;
   }
 
   function goTo(p, d = null) {
@@ -408,22 +419,6 @@ function HomePage({ hero, gallery, goTo }) {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-5 lg:px-10 py-16 lg:py-24">
-        <div className="text-center mb-12 lg:mb-16">
-          <p className="text-xs tracking-[0.3em] uppercase text-neutral-500 mb-3">Le processus</p>
-          <h2 className="font-serif text-3xl lg:text-4xl text-neutral-50" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>Comment ça marche</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-10">
-          {[{ n: '01', t: 'Choisissez', d: "Sélectionnez un design existant ou décrivez-moi votre commande sur mesure." },{ n: '02', t: 'Mesurez', d: "Envoyez 4 photos : chaque pouce et chaque main entière, avec une pièce de monnaie en euro comme référence." },{ n: '03', t: 'Recevez', d: "Je crée votre set en 7 à 14 jours, puis envoi soigné chez vous." }].map(s => (
-            <div key={s.n} className="text-center md:text-left">
-              <p className="font-serif text-5xl text-neutral-700 mb-3" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>{s.n}</p>
-              <h3 className="font-serif text-xl text-neutral-50 mb-2" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>{s.t}</h3>
-              <p className="text-neutral-400 text-sm leading-relaxed">{s.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section className="max-w-7xl mx-auto px-5 lg:px-10 py-16 lg:py-24 border-t border-neutral-900">
         <div className="text-center mb-10 lg:mb-14">
           <p className="text-xs tracking-[0.3em] uppercase text-neutral-500 mb-3">Portfolio</p>
@@ -440,26 +435,7 @@ function HomePage({ hero, gallery, goTo }) {
         )}
       </section>
 
-      <section className="max-w-3xl mx-auto px-5 lg:px-10 py-16 lg:py-24 border-t border-neutral-900">
-        <div className="text-center mb-10">
-          <p className="text-xs tracking-[0.3em] uppercase text-neutral-500 mb-3">Questions fréquentes</p>
-          <h2 className="font-serif text-3xl lg:text-4xl text-neutral-50" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>FAQ</h2>
-        </div>
-        <div className="space-y-3">{FAQ_ITEMS.map((item, i) => <FaqItem key={i} item={item} />)}</div>
-      </section>
-    </div>
-  );
-}
 
-function FaqItem({ item }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border border-neutral-800 rounded-xl overflow-hidden bg-neutral-900/40">
-      <button onClick={() => setOpen(!open)} className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-neutral-900/80 transition-colors">
-        <span className="text-neutral-100 font-medium text-sm lg:text-base pr-4">{item.q}</span>
-        <ChevronDown className={`w-4 h-4 text-neutral-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && <div className="px-5 pb-5 text-neutral-400 text-sm leading-relaxed">{item.a}</div>}
     </div>
   );
 }
@@ -1148,6 +1124,98 @@ function OrdersList({ orders, onSelect }) {
   );
 }
 
+
+function OrderPhotoCard({ imageRef, label, filename, aspectClass = 'aspect-[4/5]' }) {
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [downloadUrl, setDownloadUrl] = useState(null);
+  const [photoError, setPhotoError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    let localObjectUrl = null;
+
+    async function preparePhoto() {
+      setPhotoError('');
+
+      if (!imageRef) return;
+
+      try {
+        if (typeof imageRef === 'string' && imageRef.startsWith('data:')) {
+          const response = await fetch(imageRef);
+          const blob = await response.blob();
+          localObjectUrl = URL.createObjectURL(blob);
+
+          if (active) {
+            setPreviewUrl(localObjectUrl);
+            setDownloadUrl(localObjectUrl);
+          }
+          return;
+        }
+
+        const urls = await db.getOrderPhotoUrls(imageRef, filename);
+
+        if (active) {
+          setPreviewUrl(urls.previewUrl);
+          setDownloadUrl(urls.downloadUrl);
+        }
+      } catch (error) {
+        console.error('Photo access error:', error);
+        if (active) setPhotoError("Impossible de charger cette photo.");
+      }
+    }
+
+    preparePhoto();
+
+    return () => {
+      active = false;
+      if (localObjectUrl) URL.revokeObjectURL(localObjectUrl);
+    };
+  }, [imageRef, filename]);
+
+  return (
+    <div className="rounded-xl border border-neutral-800 bg-neutral-950 overflow-hidden">
+      <div className={`${aspectClass} bg-neutral-900 flex items-center justify-center overflow-hidden`}>
+        {previewUrl ? (
+          <img src={previewUrl} alt={label} className="w-full h-full object-cover" />
+        ) : (
+          <div className="text-center px-3">
+            <Camera className="w-5 h-5 mx-auto text-neutral-600 mb-2" />
+            <p className="text-xs text-neutral-500">{photoError || 'Chargement…'}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="p-3">
+        <p className="text-xs text-neutral-300 mb-2 min-h-[32px]">{label}</p>
+
+        <div className="flex gap-2">
+          {previewUrl && (
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 px-3 py-2 border border-neutral-700 rounded-full text-xs text-center hover:border-neutral-400"
+            >
+              Ouvrir
+            </a>
+          )}
+
+          {downloadUrl && (
+            <a
+              href={downloadUrl}
+              download={filename}
+              className="flex-1 px-3 py-2 bg-neutral-50 text-neutral-950 rounded-full text-xs text-center flex items-center justify-center gap-1"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Télécharger
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OrderDetail({ order, onBack, onUpdate, onDelete }) {
   const shape = SHAPES.find(s => s.id === order.shape);
   return (
@@ -1174,8 +1242,16 @@ function OrderDetail({ order, onBack, onUpdate, onDelete }) {
           {order.desc && <DetailRow label="Descriptif">{order.desc}</DetailRow>}
           {order.inspirations?.length > 0 && (
             <DetailRow label="Inspirations">
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-2">
-                {order.inspirations.map((img, i) => <a key={i} href={img} target="_blank" rel="noreferrer" className="block aspect-square rounded-lg overflow-hidden bg-neutral-800 border border-neutral-800 hover:border-neutral-600"><img src={img} alt="" className="w-full h-full object-cover" /></a>)}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
+                {order.inspirations.map((img, i) => (
+                  <OrderPhotoCard
+                    key={`${img}-${i}`}
+                    imageRef={img}
+                    label={`Inspiration ${i + 1}`}
+                    filename={`commande-${order.id}-inspiration-${String(i + 1).padStart(2, '0')}.jpg`}
+                    aspectClass="aspect-square"
+                  />
+                ))}
               </div>
             </DetailRow>
           )}
@@ -1186,25 +1262,12 @@ function OrderDetail({ order, onBack, onUpdate, onDelete }) {
               {MEASUREMENT_PHOTOS
                 .filter((photo) => order.measurements?.[photo.id])
                 .map((photo) => (
-                  <a
+                  <OrderPhotoCard
                     key={photo.id}
-                    href={order.measurements[photo.id]}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block"
-                  >
-                    <div className="aspect-[4/5] rounded-lg overflow-hidden bg-neutral-800 border border-neutral-800 hover:border-neutral-500 transition-colors">
-                      <img
-                        src={order.measurements[photo.id]}
-                        alt={photo.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-
-                    <p className="text-xs text-neutral-400 text-center mt-1.5">
-                      {photo.name}
-                    </p>
-                  </a>
+                    imageRef={order.measurements[photo.id]}
+                    label={photo.name}
+                    filename={`commande-${order.id}-${photo.id}.jpg`}
+                  />
                 ))}
             </div>
           </DetailRow>

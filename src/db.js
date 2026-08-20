@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
 
+const ORDER_PHOTOS_BUCKET = 'order-photos'
+
 // === SETTINGS (hero, gallery, designs) ===
 export async function getSetting(key) {
   const { data, error } = await supabase
@@ -20,24 +22,153 @@ export async function setSetting(key, value) {
   if (error) console.error('setSetting error:', error)
 }
 
-// === ORDERS ===
-export async function createOrder(order) {
-  const { error } = await supabase.from('orders').insert([
-    {
-      id: order.id,
-      type: order.type,
-      contact: order.contact,
-      status: 'new',
-      data: order
-    }
-  ])
+// === ORDER PHOTOS ===
+function dataUrlToBlob(dataUrl) {
+  const [header, base64] = String(dataUrl).split(',')
+  const mime = header?.match(/data:(.*?);base64/)?.[1] || 'image/jpeg'
+  const binary = atob(base64 || '')
+  const bytes = new Uint8Array(binary.length)
 
-  if (error) {
-    console.error('createOrder error:', error)
-    return false
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
   }
 
-  return true
+  return new Blob([bytes], { type: mime })
+}
+
+function isInlineImage(value) {
+  return typeof value === 'string' && value.startsWith('data:image/')
+}
+
+async function uploadInlineImage(dataUrl, path) {
+  const blob = dataUrlToBlob(dataUrl)
+
+  const { data, error } = await supabase.storage
+    .from(ORDER_PHOTOS_BUCKET)
+    .upload(path, blob, {
+      contentType: blob.type || 'image/jpeg',
+      cacheControl: '3600',
+      upsert: false
+    })
+
+  if (error) throw error
+  return data.path
+}
+
+async function storeOrderPhotos(order) {
+  const measurements = {}
+
+  for (const [key, value] of Object.entries(order.measurements || {})) {
+    if (isInlineImage(value)) {
+      measurements[key] = await uploadInlineImage(
+        value,
+        `${order.id}/measurements/${key}.jpg`
+      )
+    } else if (value) {
+      measurements[key] = value
+    }
+  }
+
+  const inspirations = []
+
+  for (let index = 0; index < (order.inspirations || []).length; index += 1) {
+    const value = order.inspirations[index]
+
+    if (isInlineImage(value)) {
+      inspirations.push(
+        await uploadInlineImage(
+          value,
+          `${order.id}/inspirations/inspiration-${String(index + 1).padStart(2, '0')}.jpg`
+        )
+      )
+    } else if (value) {
+      inspirations.push(value)
+    }
+  }
+
+  return {
+    ...order,
+    measurements,
+    inspirations
+  }
+}
+
+function collectStoragePaths(order) {
+  const paths = []
+
+  for (const value of Object.values(order?.measurements || {})) {
+    if (typeof value === 'string' && !value.startsWith('data:')) {
+      paths.push(value)
+    }
+  }
+
+  for (const value of order?.inspirations || []) {
+    if (typeof value === 'string' && !value.startsWith('data:')) {
+      paths.push(value)
+    }
+  }
+
+  return paths
+}
+
+export async function getOrderPhotoUrls(path, filename = 'photo.jpg') {
+  if (!path) throw new Error('Photo path is missing')
+
+  if (String(path).startsWith('data:')) {
+    return {
+      previewUrl: path,
+      downloadUrl: path
+    }
+  }
+
+  const { data: previewData, error: previewError } = await supabase.storage
+    .from(ORDER_PHOTOS_BUCKET)
+    .createSignedUrl(path, 60 * 60)
+
+  if (previewError) throw previewError
+
+  const { data: downloadData, error: downloadError } = await supabase.storage
+    .from(ORDER_PHOTOS_BUCKET)
+    .createSignedUrl(path, 60 * 60, {
+      download: filename
+    })
+
+  if (downloadError) throw downloadError
+
+  return {
+    previewUrl: previewData.signedUrl,
+    downloadUrl: downloadData.signedUrl
+  }
+}
+
+// === ORDERS ===
+export async function createOrder(order) {
+  try {
+    const storedOrder = await storeOrderPhotos(order)
+
+    const { error } = await supabase.from('orders').insert([
+      {
+        id: storedOrder.id,
+        type: storedOrder.type,
+        contact: storedOrder.contact,
+        status: 'new',
+        data: storedOrder
+      }
+    ])
+
+    if (error) throw error
+
+    return {
+      ok: true,
+      order: storedOrder
+    }
+  } catch (error) {
+    console.error('createOrder error:', error)
+    return {
+      ok: false,
+      error
+    }
+  }
 }
 
 export async function listOrders() {
@@ -69,6 +200,28 @@ export async function updateOrderStatus(id, status) {
 }
 
 export async function deleteOrder(id) {
+  const { data: row, error: readError } = await supabase
+    .from('orders')
+    .select('data')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (readError) {
+    console.error('deleteOrder read error:', readError)
+  }
+
+  const paths = collectStoragePaths(row?.data)
+
+  if (paths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from(ORDER_PHOTOS_BUCKET)
+      .remove(paths)
+
+    if (storageError) {
+      console.error('deleteOrder storage error:', storageError)
+    }
+  }
+
   const { error } = await supabase
     .from('orders')
     .delete()
